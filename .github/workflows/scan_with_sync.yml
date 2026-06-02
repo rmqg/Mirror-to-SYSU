@@ -61,6 +61,32 @@ jobs:
                 "$GITLAB_API/projects" || true
             fi
 
+            PROJECT_ID=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+              "$GITLAB_API/projects/$PROJECT_PATH" | jq -r '.id')
+
+            echo "Project ID: $PROJECT_ID"
+
+            EXISTING_MIRROR=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+              "$GITLAB_API/projects/$PROJECT_ID/remote_mirrors")
+
+            if echo "$EXISTING_MIRROR" | grep -q "github.com"; then
+              echo "Push mirror already exists"
+            else
+
+              echo "Creating Push Mirror..."
+
+              curl -s --request POST \
+                --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+                --header "Content-Type: application/json" \
+                --data "{
+                  \"url\": \"https://$GHP_USERNAME:$GHP_TOKEN@github.com/$GHP_USERNAME/$REPO_NAME.git\",
+                  \"enabled\": true,
+                  \"only_protected_branches\": false,
+                  \"keep_divergent_refs\": true
+                }" \
+                "$GITLAB_API/projects/$PROJECT_ID/remote_mirrors"
+            fi
+
             echo "Syncing..."
 
             rm -rf "$REPO_NAME.git"
