@@ -85,7 +85,7 @@ jobs:
             curl -s --request DELETE --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
               "$GITLAB_API/projects/$PROJECT_PATH/protected_branches/$DEFAULT_BRANCH" || true
             echo "请求 Git 完成初次同步操作"
-            GIT_LFS_SKIP_SMUDGE=1 git clone --bare --progress https://$GHP_USERNAME:$GHP_TOKEN@github.com/$GHP_USERNAME/$REPO_NAME.git
+            GIT_LFS_SKIP_SMUDGE=1 git clone --bare https://$GHP_USERNAME:$GHP_TOKEN@github.com/$GHP_USERNAME/$REPO_NAME.git
             cd "$REPO_NAME.git"
             git remote remove gitlab 2>/dev/null || true
             git remote add gitlab https://oauth2:$GITLAB_TOKEN@git.sysu.edu.cn/$GITLAB_NAMESPACE/$REPO_NAME.git
