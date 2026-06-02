@@ -67,6 +67,12 @@ jobs:
             
             git lfs install --skip-smudge
 
+            git config --global core.compression 0
+            git config --global pack.threads 1
+            git config --global http.postBuffer 524288000
+            git config --global http.lowSpeedLimit 0
+            git config --global http.lowSpeedTime 999999
+
             GIT_LFS_SKIP_SMUDGE=1 git clone --bare --progress https://$GHP_USERNAME:$GHP_TOKEN@github.com/$GHP_USERNAME/$REPO_NAME.git
             
             cd "$REPO_NAME.git"
@@ -75,9 +81,15 @@ jobs:
 
             git remote add gitlab https://oauth2:$GITLAB_TOKEN@git.sysu.edu.cn/$GITLAB_NAMESPACE/$REPO_NAME.git
 
-            git config lfs.fetchexclude "*"
+            echo "Fetching LFS ..."
+
+            git lfs fetch origin --all || true
             
             git push --mirror gitlab || true
+
+            echo "Pushing LFS ..."
+
+            git lfs push --all gitlab || true
 
             cd ..
             rm -rf "$REPO_NAME.git"
