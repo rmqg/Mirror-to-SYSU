@@ -73,6 +73,24 @@ jobs:
             git config --global http.lowSpeedLimit 0
             git config --global http.lowSpeedTime 999999
 
+            echo "Detecting default branch..."
+
+            DEFAULT_BRANCH=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+              "$GITLAB_API/projects/$PROJECT_PATH" | jq -r '.default_branch')
+
+            if [ "$DEFAULT_BRANCH" = "null" ] || [ -z "$DEFAULT_BRANCH" ]; then
+              DEFAULT_BRANCH="main"
+            fi
+
+            echo "Default branch: $DEFAULT_BRANCH"
+
+            echo "Unprotecting branch (if exists)..."
+
+            curl -s --request DELETE \
+              --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+              "$GITLAB_API/projects/$PROJECT_PATH/protected_branches/$DEFAULT_BRANCH" \
+              || true
+
             GIT_LFS_SKIP_SMUDGE=1 git clone --bare --progress https://$GHP_USERNAME:$GHP_TOKEN@github.com/$GHP_USERNAME/$REPO_NAME.git
             
             cd "$REPO_NAME.git"
