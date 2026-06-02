@@ -2,7 +2,7 @@ import requests
 import os
 
 GL_TOKEN = os.getenv("GITLAB_TOKEN")
-GL_URL = "git.sysu.edu.cn"
+GL_URL = "https://git.sysu.edu.cn"
 GL_USER = os.getenv("GITLAB_USERNAME")
 
 
