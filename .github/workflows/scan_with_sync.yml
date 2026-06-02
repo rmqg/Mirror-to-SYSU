@@ -81,7 +81,7 @@ jobs:
               DEFAULT_BRANCH="main"
             fi
             echo "获取到默认分支: $DEFAULT_BRANCH"
-            echo "请求移除该分支的默认保护规则"
+            echo "请求移除该分支的默认保护规则（如果不存在，可能返回 404 错误）"
             curl -s --request DELETE --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
               "$GITLAB_API/projects/$PROJECT_PATH/protected_branches/$DEFAULT_BRANCH" || true
             echo "请求 Git 完成初次同步操作"
@@ -92,7 +92,7 @@ jobs:
             echo "检查 LFS 对象"
             git lfs fetch origin --all || true
             git push --mirror gitlab || true
-            echo "尝试推送 LFS 对象（如果没有，可能返回 404 错误）"
+            echo "尝试推送 LFS 对象"
             git lfs push --all gitlab || true
             cd ..
             rm -rf "$REPO_NAME.git"
