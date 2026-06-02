@@ -40,7 +40,7 @@ jobs:
               continue
             fi
 
-            REPO_NAME = "$repo"
+            REPO_NAME="$repo"
 
             echo "----- Processing $REPO_NAME -----"
 
