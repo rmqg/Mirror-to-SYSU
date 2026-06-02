@@ -20,8 +20,8 @@ jobs:
 
       - run: python sync_engine.py
         env:
-          GITHUB_USERNAME: ${{ secrets.GHP_USERNAME }}
-          GITHUB_TOKEN: ${{ secrets.GHP_TOKEN_CUSTOM }}
+          GHP_USERNAME: ${{ secrets.GHP_USERNAME }}
+          GHP_TOKEN: ${{ secrets.GHP_TOKEN_CUSTOM }}
           GITLAB_URL: https://git.sysu.edu.cn
           GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
