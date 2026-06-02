@@ -67,7 +67,7 @@ jobs:
             
             git lfs install --skip-smudge
 
-            GIT_LFS_SKIP_SMUDGE=1 git clone --bare https://$GHP_USERNAME:$GHP_TOKEN@github.com/$GHP_USERNAME/$REPO_NAME.git
+            GIT_LFS_SKIP_SMUDGE=1 git clone --bare --progress https://$GHP_USERNAME:$GHP_TOKEN@github.com/$GHP_USERNAME/$REPO_NAME.git
             
             cd "$REPO_NAME.git"
 
