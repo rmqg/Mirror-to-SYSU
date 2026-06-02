@@ -1,4 +1,4 @@
-name: Scan
+name: Scan & Sync
 
 on:
   workflow_dispatch:
@@ -12,61 +12,72 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: pip install requests
+      - name: Install deps
+        run: pip install requests
 
-      - run: python repo_scanner.py
+      - name: Scan repos
+        run: python repo_scanner.py
         env:
           GHP_TOKEN: ${{ secrets.GHP_TOKEN_CUSTOM }}
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: repos
-          path: repos.txt
-
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: repos
-
-      - run: pip install requests
-
-      - name: Ensure GitLab repo exists
+      - name: Ensure GitLab repos + Sync
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
           GITLAB_NAMESPACE: RenAhsAcme
-          GITLAB_NAMESPACE_ID: 12
-        run: |
-          set -e
-
-          REPO_NAME=$(basename "$GITHUB_REPOSITORY")
-          GITLAB_API="https://git.sysu.edu.cn/api/v4"
-
-          echo "Checking GitLab repo: $REPO_NAME"
-
-          # URL encode
-          PROJECT_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$GITLAB_NAMESPACE/$REPO_NAME', safe=''))")
-
-          EXISTS=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-            "$GITLAB_API/projects/$PROJECT_PATH")
-
-          if echo "$EXISTS" | jq -e '.id' > /dev/null; then
-            echo "Repo exists"
-          else
-            echo "Creating repo..."
-
-            curl --request POST \
-              --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-              --data "name=$REPO_NAME" \
-              --data "path=$REPO_NAME" \
-              "$GITLAB_API/projects"
-          fi
-          
-      - run: python sync_engine.py
-        env:
           GHP_USERNAME: ${{ secrets.GHP_USERNAME }}
           GHP_TOKEN: ${{ secrets.GHP_TOKEN_CUSTOM }}
           GITLAB_URL: https://git.sysu.edu.cn
-          GITLAB_USERNAME: ${{ secrets.GITLAB_USERNAME }}
-          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        run: |
+          set -e
 
+          GITLAB_API="$GITLAB_URL/api/v4"
+
+          echo "===== START PROCESSING REPOS ====="
+
+          while read repo; do
+            echo "Processing $repo"
+            if [ -z "$REPO_NAME" ]; then
+              continue
+            fi
+
+            echo "----- Processing $REPO_NAME -----"
+
+            # URL encode
+            PROJECT_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$GITLAB_NAMESPACE/' + '$REPO_NAME', safe=''))")
+
+            EXISTS=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+              "$GITLAB_API/projects/$PROJECT_PATH")
+
+            if echo "$EXISTS" | jq -e '.id' > /dev/null 2>&1; then
+              echo "Repo exists on GitLab"
+            else
+              echo "Creating GitLab repo..."
+
+              curl -s --request POST \
+                --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+                --data "name=$REPO_NAME" \
+                "$GITLAB_API/projects" || true
+            fi
+
+            echo "Syncing..."
+
+            rm -rf "$REPO_NAME.git"
+
+            git clone --bare https://$GHP_USERNAME:$GHP_TOKEN@github.com/$GHP_USERNAME/$REPO_NAME.git
+
+            cd "$REPO_NAME.git"
+
+            git remote remove gitlab 2>/dev/null || true
+
+            git remote add gitlab https://oauth2:$GITLAB_TOKEN@git.sysu.edu.cn/$GITLAB_NAMESPACE/$REPO_NAME.git
+
+            git push --mirror gitlab || true
+
+            cd ..
+            rm -rf "$REPO_NAME.git"
+
+            echo "Done $REPO_NAME"
+
+          done < repos.txt
+
+          echo "===== ALL DONE ====="
