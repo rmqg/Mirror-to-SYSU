@@ -1,7 +1,7 @@
 import requests
 import os
 
-GITHUB_TOKEN = os.getenv("GHP_TOKEN")
+GHP_TOKEN = os.getenv("GHP_TOKEN")
 
 def get_repos():
     repos = []
