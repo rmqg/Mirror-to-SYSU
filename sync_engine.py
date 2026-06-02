@@ -6,7 +6,7 @@ from gitlab_api import create_repo, push_ci_file
 GH_USER = os.getenv("GHP_USERNAME")
 GH_TOKEN = os.getenv("GHP_TOKEN")
 
-GL_URL = "git.sysu.edu.cn"
+GL_URL = "https://git.sysu.edu.cn"
 GL_USER = os.getenv("GITLAB_USERNAME")
 GL_TOKEN = os.getenv("GITLAB_TOKEN")
 
