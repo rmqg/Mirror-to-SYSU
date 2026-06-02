@@ -35,11 +35,12 @@ jobs:
           echo "===== START PROCESSING REPOS ====="
 
           while read repo; do
-            REPO_NAME = "$repo"
-            echo "Processing $REPO_NAME"
-            if [ -z "$REPO_NAME" ]; then
+            
+            if [ -z "$repo" ]; then
               continue
             fi
+
+            REPO_NAME = "$repo"
 
             echo "----- Processing $REPO_NAME -----"
 
