@@ -49,6 +49,10 @@ jobs:
             PROJECT_ID=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
               "$GITLAB_API/projects/$PROJECT_PATH" | jq -r '.id')
             echo "获取到中山大学代码托管服务上该仓库的 Project ID: $PROJECT_ID"
+            echo "关闭中山大学代码托管服务上该仓库的 CI/CD 与 Auto DevOps，避免镜像同步触发 GitLab 流水线"
+            curl -s --request PUT --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --header "Content-Type: application/json" \
+              --data '{"builds_access_level":"disabled","auto_devops_enabled":false}' \
+              "$GITLAB_API/projects/$PROJECT_ID" > /dev/null || true
             EXISTING_MIRROR=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
               "$GITLAB_API/projects/$PROJECT_ID/remote_mirrors")
             if echo "$EXISTING_MIRROR" | grep -q "github.com"; then
@@ -91,7 +95,7 @@ jobs:
             git remote add gitlab https://oauth2:$GITLAB_TOKEN@git.sysu.edu.cn/$GITLAB_NAMESPACE/$REPO_NAME.git
             echo "检查 LFS 对象"
             git lfs fetch origin --all || true
-            git push --mirror gitlab || true
+            git push --mirror -o ci.skip gitlab || true
             echo "尝试推送 LFS 对象"
             git lfs push --all gitlab || true
             cd ..
