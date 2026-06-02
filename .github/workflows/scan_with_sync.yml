@@ -1,83 +1,61 @@
-name: Scan & Sync
+name: 【点击此处立即触发】GitHub 全量同步至 GitLab
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */12 * * *"
+    - cron: "0 */12 * * *"  # 每 4 小时自动触发一次，避免给服务器带来过大压力。
 
 jobs:
-  scan:
+  Mirror-to-SYSU:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: 载入仓库内容
+        uses: actions/checkout@v4
 
-      - name: Install deps
+      - name: 安装 Python 网络交互依赖
         run: pip install requests
 
-      - name: Scan repos
+      - name: 调用仓库扫描 - 依赖仓库根目录 repo_scanner.py
         run: python repo_scanner.py
         env:
           GHP_TOKEN: ${{ secrets.GHP_TOKEN_CUSTOM }}
 
-      - name: Ensure GitLab repos + Sync
+      - name: 对远程仓库进行操作 - 新建、配置镜像设置、解除分支保护、强制镜像
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
-          GITLAB_NAMESPACE: RenAhsAcme
+          GITLAB_NAMESPACE: ${{ secrets.GITLAB_USERNAME }}
           GHP_USERNAME: ${{ secrets.GHP_USERNAME }}
           GHP_TOKEN: ${{ secrets.GHP_TOKEN_CUSTOM }}
           GITLAB_URL: https://git.sysu.edu.cn
         run: |
           set -e
-
           GITLAB_API="$GITLAB_URL/api/v4"
-
-          echo "===== START PROCESSING REPOS ====="
-
           while read repo; do
-            
             if [ -z "$repo" ]; then
               continue
             fi
-
             REPO_NAME="$repo"
-
-            echo "----- Processing $REPO_NAME -----"
-
-            # URL encode
+            echo "===正在处理仓库：$REPO_NAME==="
             PROJECT_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$GITLAB_NAMESPACE/' + '$REPO_NAME', safe=''))")
-
-            EXISTS=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-              "$GITLAB_API/projects/$PROJECT_PATH")
-
+            EXISTS=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" "$GITLAB_API/projects/$PROJECT_PATH")
             if echo "$EXISTS" | jq -e '.id' > /dev/null 2>&1; then
-              echo "Repo exists on GitLab"
+              echo "发现中山大学代码托管服务上已存在的仓库：$REPO_NAME，跳过创建操作"
             else
-              echo "Creating GitLab repo..."
-
-              curl -s --request POST \
-                --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-                --data "name=$REPO_NAME" \
+              echo "未发现中山大学代码托管服务上存在对应仓库，请求创建"
+              curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --data "name=$REPO_NAME" \
                 "$GITLAB_API/projects" || true
             fi
-
             PROJECT_ID=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
               "$GITLAB_API/projects/$PROJECT_PATH" | jq -r '.id')
-
-            echo "Project ID: $PROJECT_ID"
-
+            echo "获取到中山大学代码托管服务上该仓库的 Project ID: $PROJECT_ID"
             EXISTING_MIRROR=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
               "$GITLAB_API/projects/$PROJECT_ID/remote_mirrors")
-
             if echo "$EXISTING_MIRROR" | grep -q "github.com"; then
-              echo "Push mirror already exists"
+              echo "获取到中山大学代码托管服务上该仓库的镜像设置，跳过镜像设置"
             else
-
-              echo "Creating Push Mirror..."
-
-              curl -s --request POST \
-                --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-                --header "Content-Type: application/json" \
+              echo "未获取到中山大学代码托管服务上该仓库的镜像设置，请求设置"
+              curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --header "Content-Type: application/json" \
                 --data "{
                   \"url\": \"https://$GHP_USERNAME:$GHP_TOKEN@github.com/$GHP_USERNAME/$REPO_NAME.git\",
                   \"enabled\": true,
@@ -86,60 +64,37 @@ jobs:
                 }" \
                 "$GITLAB_API/projects/$PROJECT_ID/remote_mirrors"
             fi
-
-            echo "Syncing..."
-
+            echo "尝试同步"
             rm -rf "$REPO_NAME.git"
-            
+            echo "暂时关闭 LFS 以加快初次同步进程"
             git lfs install --skip-smudge
-
+            echo "优化 Git 操作配置"
             git config --global core.compression 0
             git config --global pack.threads 1
             git config --global http.postBuffer 524288000
             git config --global http.lowSpeedLimit 0
             git config --global http.lowSpeedTime 999999
-
-            echo "Detecting default branch..."
-
+            echo "请求中山大学代码托管服务上该仓库的默认分支"
             DEFAULT_BRANCH=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
               "$GITLAB_API/projects/$PROJECT_PATH" | jq -r '.default_branch')
-
             if [ "$DEFAULT_BRANCH" = "null" ] || [ -z "$DEFAULT_BRANCH" ]; then
               DEFAULT_BRANCH="main"
             fi
-
-            echo "Default branch: $DEFAULT_BRANCH"
-
-            echo "Unprotecting branch (if exists)..."
-
-            curl -s --request DELETE \
-              --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-              "$GITLAB_API/projects/$PROJECT_PATH/protected_branches/$DEFAULT_BRANCH" \
-              || true
-
+            echo "获取到默认分支: $DEFAULT_BRANCH"
+            echo "请求移除该分支的默认保护规则"
+            curl -s --request DELETE --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+              "$GITLAB_API/projects/$PROJECT_PATH/protected_branches/$DEFAULT_BRANCH" || true
+            echo "请求 Git 完成初次同步操作"
             GIT_LFS_SKIP_SMUDGE=1 git clone --bare --progress https://$GHP_USERNAME:$GHP_TOKEN@github.com/$GHP_USERNAME/$REPO_NAME.git
-            
             cd "$REPO_NAME.git"
-
             git remote remove gitlab 2>/dev/null || true
-
             git remote add gitlab https://oauth2:$GITLAB_TOKEN@git.sysu.edu.cn/$GITLAB_NAMESPACE/$REPO_NAME.git
-
-            echo "Fetching LFS ..."
-
+            echo "检查 LFS 对象"
             git lfs fetch origin --all || true
-            
             git push --mirror gitlab || true
-
-            echo "Pushing LFS ..."
-
+            echo "尝试推送 LFS 对象（如果没有，可能返回 404 错误）"
             git lfs push --all gitlab || true
-
             cd ..
             rm -rf "$REPO_NAME.git"
-
-            echo "Done $REPO_NAME"
-
+            echo "===仓库处理完毕：$REPO_NAME==="
           done < repos.txt
-
-          echo "===== ALL DONE ====="
