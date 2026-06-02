@@ -58,7 +58,7 @@ jobs:
             curl --request POST \
               --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
               --data "name=$REPO_NAME" \
-              --data "namespace_id=$GITLAB_NAMESPACE_ID" \
+              --data "path=$REPO_NAME" \
               "$GITLAB_API/projects"
           fi
           
