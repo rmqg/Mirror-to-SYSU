@@ -8,8 +8,9 @@ def get_repos():
     repos = []
     page = 1
     while True:
-        r = requests.get(f"https://api.github.com/user/repos?per_page=100&page={page}",
+        r = requests.get(f"https://api.github.com/user/repos?per_page=100&page={page}&affiliation=owner",
             headers={"Authorization": f"token {GHP_TOKEN}"})
+        r.raise_for_status()
         data = r.json()
         if not data:
             break

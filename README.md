@@ -27,11 +27,11 @@ Automatically synchronize all repositories under your personal account to the Su
    - `GHP_USERNAME`：您的 GitHub 账户名（注意不是昵称，可参考本人主页 URL）
    - `GITLAB_TOKEN`
    - `GITLAB_USERNAME`：您在中山大学代码托管服务上的用户名（注意不是昵称，是您设置的个人账户命名空间，可参考本人主页 URL）
-4. 前往 Actions 页面可尝试手动发起一次同步，也可等待每 4 小时自动触发一次。
+4. 前往 Actions 页面可尝试手动发起一次同步，也可等待每 12 小时自动触发一次。
 
 ## 实现效果
 
-- 每个 4 小时，GitHub 仓库上发生的更改向中山大学代码托管服务同步；
+- 每隔 12 小时，GitHub 仓库上发生的更改向中山大学代码托管服务同步；
 - 即使存在新仓库，也能在中山大学代码托管服务同步创建；
 - 调用 API 设置使得这些仓库能够直接利用镜像仓库机制，将中山大学代码托管服务上的更改同步到 GitHub 上；
 - 理论上，你可以向任一平台进行提交操作，它们能够实现双向同步。

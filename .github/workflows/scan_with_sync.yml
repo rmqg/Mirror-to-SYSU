@@ -3,7 +3,7 @@ name: 【点击此处立即触发】GitHub 全量同步至 GitLab
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */12 * * *"  # 每 4 小时自动触发一次，避免给服务器带来过大压力。
+    - cron: "0 */12 * * *"  # 每 12 小时自动触发一次，避免给服务器带来过大压力。
 
 jobs:
   Mirror-to-SYSU:
@@ -43,7 +43,7 @@ jobs:
               echo "发现中山大学代码托管服务上已存在的仓库：$REPO_NAME，跳过创建操作"
             else
               echo "未发现中山大学代码托管服务上存在对应仓库，请求创建"
-              curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --data "name=$REPO_NAME" \
+              curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --data "name=$REPO_NAME" --data "path=$REPO_NAME" \
                 "$GITLAB_API/projects" || true
             fi
             PROJECT_ID=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
